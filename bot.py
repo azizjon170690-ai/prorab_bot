@@ -1,11 +1,10 @@
-
 import os
 import json
 import logging
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes, ConversationHandler
 )
 
@@ -36,27 +35,27 @@ def fmt(amount):
 
 def menu_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Xarajat qo'shish", callback_data="add")],
-        [InlineKeyboardButton("📊 Hisobot ko'rish", callback_data="report")],
-        [InlineKeyboardButton("🗑 Oxirgi o'chirish", callback_data="delete_last")],
+        [InlineKeyboardButton("Xarajat qoshish", callback_data="add")],
+        [InlineKeyboardButton("Hisobot korish", callback_data="report")],
+        [InlineKeyboardButton("Oxirgi ochirish", callback_data="delete_last")],
     ])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "⚒ *PRORAB HISOBOT*\n\nXarajatlarni boshqarish\n\nNima qilmoqchisiz?",
-        parse_mode="Markdown", reply_markup=menu_kb()
+        "PRORAB HISOBOT\n\nXarajatlarni boshqarish\n\nNima qilmoqchisiz?",
+        reply_markup=menu_kb()
     )
 
 async def add_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     await q.edit_message_text(
-        "➕ *Qaysi obyekt?*", parse_mode="Markdown",
+        "Qaysi obyekt?",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 777 Xovli", callback_data="add_obj1")],
-            [InlineKeyboardButton("🏡 Mingdonobod Kotej", callback_data="add_obj2")],
-            [InlineKeyboardButton("🏢 London 38kv", callback_data="add_obj3")],
-            [InlineKeyboardButton("↩️ Orqaga", callback_data="menu")],
+            [InlineKeyboardButton("777 Xovli", callback_data="add_obj1")],
+            [InlineKeyboardButton("Mingdonobod Kotej", callback_data="add_obj2")],
+            [InlineKeyboardButton("London 38kv", callback_data="add_obj3")],
+            [InlineKeyboardButton("Orqaga", callback_data="menu")],
         ])
     )
     return CHOOSE_OBJ
@@ -67,8 +66,7 @@ async def choose_obj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     obj_key = q.data.replace("add_", "")
     context.user_data["current_obj"] = obj_key
     await q.edit_message_text(
-        f"🏗 *{OBJECTS[obj_key]}*\n\n💰 Summani kiriting:\nMasalan: 500000",
-        parse_mode="Markdown"
+        f"{OBJECTS[obj_key]}\n\nSummani kiriting (faqat raqam):\nMasalan: 500000"
     )
     return ENTER_AMOUNT
 
@@ -76,35 +74,36 @@ async def enter_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.replace(" ", "").replace(",", "")
     try:
         amount = float(text)
-        if amount <= 0: raise ValueError
+        if amount <= 0:
+            raise ValueError
         context.user_data["amount"] = amount
         await update.message.reply_text(
-            f"✅ Summa: *{fmt(amount)}*\n\n📝 Nima uchun yozing:",
-            parse_mode="Markdown"
+            f"Summa: {fmt(amount)}\n\nNima uchun yozing:\nMasalan: g'isht, ish haqi, qum"
         )
         return ENTER_DESC
-    except:
-        await update.message.reply_text("❌ Faqat raqam kiriting! Masalan: 500000")
+    except Exception:
+        await update.message.reply_text("Xato! Faqat raqam kiriting:\nMasalan: 500000")
         return ENTER_AMOUNT
 
 async def enter_desc(update: Update, context: ContextTypes.DEFAULT_TYPE):
     desc = update.message.text.strip()
     if not desc:
-        await update.message.reply_text("❌ Bo'sh bo'lmasin!")
+        await update.message.reply_text("Bosh bolmasin!")
         return ENTER_DESC
     obj_key = context.user_data["current_obj"]
     amount = context.user_data["amount"]
     expenses = load_data()
     expenses[obj_key].append({
-        "amount": amount, "desc": desc,
+        "amount": amount,
+        "desc": desc,
         "date": datetime.now().strftime("%d.%m.%Y"),
         "timestamp": datetime.now().isoformat()
     })
     save_data(expenses)
     total = sum(e["amount"] for e in expenses[obj_key])
     await update.message.reply_text(
-        f"✅ *Qo'shildi!*\n\n🏗 {OBJECTS[obj_key]}\n💰 {fmt(amount)}\n📝 {desc}\n\n📊 Jami: *{fmt(total)}*",
-        parse_mode="Markdown", reply_markup=menu_kb()
+        f"Qoshildi!\n\n{OBJECTS[obj_key]}\n{fmt(amount)}\n{desc}\n\nJami: {fmt(total)}",
+        reply_markup=menu_kb()
     )
     return ConversationHandler.END
 
@@ -112,13 +111,13 @@ async def report_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     await q.edit_message_text(
-        "📊 *Qaysi hisobot?*", parse_mode="Markdown",
+        "Qaysi hisobot?",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 Hammasi", callback_data="rep_all")],
-            [InlineKeyboardButton("🏠 777 Xovli", callback_data="rep_obj1")],
-            [InlineKeyboardButton("🏡 Mingdonobod Kotej", callback_data="rep_obj2")],
-            [InlineKeyboardButton("🏢 London 38kv", callback_data="rep_obj3")],
-            [InlineKeyboardButton("↩️ Orqaga", callback_data="menu")],
+            [InlineKeyboardButton("Hammasi", callback_data="rep_all")],
+            [InlineKeyboardButton("777 Xovli", callback_data="rep_obj1")],
+            [InlineKeyboardButton("Mingdonobod Kotej", callback_data="rep_obj2")],
+            [InlineKeyboardButton("London 38kv", callback_data="rep_obj3")],
+            [InlineKeyboardButton("Orqaga", callback_data="menu")],
         ])
     )
 
@@ -127,28 +126,30 @@ async def show_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     obj_key = q.data.replace("rep_", "")
     expenses = load_data()
-    text = "📊 *HISOBOT*\n\n"
+    text = "HISOBOT\n\n"
     if obj_key == "all":
         grand = 0
         for key, name in OBJECTS.items():
             items = expenses.get(key, [])
             total = sum(e["amount"] for e in items)
             grand += total
-            text += f"━━━━━━━━━━━━━━━\n🏗 *{name}*\n💰 Jami: *{fmt(total)}*\n📝 {len(items)} ta\n"
-        text += f"━━━━━━━━━━━━━━━\n🔢 *UMUMIY: {fmt(grand)}*"
+            text += f"{name}\nJami: {fmt(total)} ({len(items)} ta)\n\n"
+        text += f"UMUMIY: {fmt(grand)}"
     else:
         name = OBJECTS[obj_key]
         items = expenses.get(obj_key, [])
         total = sum(e["amount"] for e in items)
-        text += f"🏗 *{name}*\n━━━━━━━━━━━━━━━\n"
+        text += f"{name}\n"
         if not items:
-            text += "Xarajatlar yo'q\n"
+            text += "Xarajatlar yoq\n"
         else:
             for e in items[-10:]:
-                text += f"📅 {e['date']} — {fmt(e['amount'])}\n📝 {e['desc']}\n\n"
-        text += f"━━━━━━━━━━━━━━━\n💰 *Jami: {fmt(total)}*"
-    await q.edit_message_text(text, parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Orqaga", callback_data="menu")]]))
+                text += f"{e['date']} - {fmt(e['amount'])}\n{e['desc']}\n\n"
+        text += f"Jami: {fmt(total)}"
+    await q.edit_message_text(
+        text,
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Orqaga", callback_data="menu")]])
+    )
 
 async def delete_last(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -162,16 +163,16 @@ async def delete_last(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if t > last_time:
                 last_time, last_obj = t, key
     if not last_obj:
-        await q.edit_message_text("❌ O'chiriladigan narsa yo'q!",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Orqaga", callback_data="menu")]]))
+        await q.edit_message_text(
+            "Ochiriladigan narsa yoq!",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Orqaga", callback_data="menu")]]))
         return
     last = expenses[last_obj][-1]
     await q.edit_message_text(
-        f"🗑 *O'chirilsinmi?*\n\n🏗 {OBJECTS[last_obj]}\n💰 {fmt(last['amount'])}\n📝 {last['desc']}\n📅 {last['date']}",
-        parse_mode="Markdown",
+        f"Ochirilsinmi?\n\n{OBJECTS[last_obj]}\n{fmt(last['amount'])}\n{last['desc']}\n{last['date']}",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Ha", callback_data=f"del_{last_obj}")],
-            [InlineKeyboardButton("❌ Yo'q", callback_data="menu")],
+            [InlineKeyboardButton("Ha, ochir", callback_data=f"del_{last_obj}")],
+            [InlineKeyboardButton("Yoq", callback_data="menu")],
         ])
     )
 
@@ -183,25 +184,29 @@ async def confirm_del(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if expenses.get(obj_key):
         d = expenses[obj_key].pop()
         save_data(expenses)
-        await q.edit_message_text(f"✅ O'chirildi!\n💰 {fmt(d['amount'])}\n📝 {d['desc']}",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Orqaga", callback_data="menu")]]))
+        await q.edit_message_text(
+            f"Ochirildi!\n{fmt(d['amount'])}\n{d['desc']}",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Orqaga", callback_data="menu")]]))
     else:
-        await q.edit_message_text("❌ Topilmadi!",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Orqaga", callback_data="menu")]]))
+        await q.edit_message_text(
+            "Topilmadi!",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Orqaga", callback_data="menu")]]))
 
 async def go_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    await q.edit_message_text("⚒ *PRORAB HISOBOT*\n\nNima qilmoqchisiz?",
-        parse_mode="Markdown", reply_markup=menu_kb())
+    await q.edit_message_text(
+        "PRORAB HISOBOT\n\nNima qilmoqchisiz?",
+        reply_markup=menu_kb()
+    )
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❌ Bekor qilindi", reply_markup=menu_kb())
+    await update.message.reply_text("Bekor qilindi", reply_markup=menu_kb())
     return ConversationHandler.END
 
 def main():
-    app = Application.builder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
     conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_entry, pattern="^add$")],
         states={
@@ -209,7 +214,10 @@ def main():
             ENTER_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_amount)],
             ENTER_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, enter_desc)],
         },
-        fallbacks=[CommandHandler("cancel", cancel), CallbackQueryHandler(go_menu, pattern="^menu$")],
+        fallbacks=[
+            CommandHandler("cancel", cancel),
+            CallbackQueryHandler(go_menu, pattern="^menu$"),
+        ],
     )
     app.add_handler(CommandHandler("start", start))
     app.add_handler(conv)
